@@ -15,12 +15,12 @@
 
 **Критерий приёмки:** документы согласованы и закоммичены.
 
-## Этап 1. Каркас проекта ⬜
+## Этап 1. Каркас проекта 🟨 (ожидает проверки на iPhone)
 - Создание Expo-проекта (SDK 57, TypeScript, Expo Router).
 - `tsconfig` в режиме `strict`, алиас импорта `@/` → `src/`.
 - ESLint (`expo lint`), Jest (`jest-expo`).
 - Скрипты: `typecheck`, `lint`, `test`.
-- Пустая структура папок по ARCHITECTURE.md, экран-заглушка с названием granato.
+- Пустая структура папок по ARCHITECTURE.md (экраны в `src/app/`), экран-заглушка с названием granato.
 - `.gitignore`, `.env.example`.
 
 **Критерии приёмки:**

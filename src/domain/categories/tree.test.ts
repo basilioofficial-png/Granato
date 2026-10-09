@@ -1,8 +1,13 @@
 import {
   branchColor,
+  canHaveChildren,
+  categoryDepth,
   categoryPath,
   childCategories,
   descendantCount,
+  isActiveCategory,
+  possibleParents,
+  subtreeIds,
 } from '@/domain/categories/tree';
 import { makeCategory } from '@/domain/test-utils/makeCategory';
 
@@ -58,5 +63,57 @@ describe('descendantCount', () => {
 describe('branchColor', () => {
   it('uses the root color for nested activities', () => {
     expect(branchColor(all, 'standup')).toBe('#B71F2E');
+  });
+});
+
+describe('isActiveCategory', () => {
+  it('is false for an archived category and everything below it', () => {
+    const list = [
+      makeCategory({ id: 'work' }),
+      makeCategory({ id: 'meetings', parentId: 'work', archivedAt: 5 }),
+      makeCategory({ id: 'standup', parentId: 'meetings' }),
+    ];
+    expect(isActiveCategory(list, 'work')).toBe(true);
+    expect(isActiveCategory(list, 'meetings')).toBe(false);
+    expect(isActiveCategory(list, 'standup')).toBe(false);
+    expect(isActiveCategory(list, 'missing')).toBe(false);
+  });
+});
+
+describe('depth rules', () => {
+  it('allows three levels: category › activity › refinement', () => {
+    expect(categoryDepth(all, 'standup')).toBe(2);
+    expect(canHaveChildren(all, 'work')).toBe(true);
+    expect(canHaveChildren(all, 'meetings')).toBe(true);
+    expect(canHaveChildren(all, 'standup')).toBe(false);
+  });
+});
+
+describe('possibleParents', () => {
+  const ids = (list: ReturnType<typeof possibleParents>) => list.map((c) => c?.id ?? null);
+
+  it('never offers the category itself or its descendants', () => {
+    const result = ids(possibleParents(all, 'meetings'));
+    expect(result).not.toContain('meetings');
+    expect(result).not.toContain('standup');
+    expect(result).toContain(null);
+  });
+
+  it('keeps the moved branch within three levels', () => {
+    // "meetings" has a child, so it can only go to the top level or directly under a root.
+    expect(ids(possibleParents(all, 'meetings')).sort()).toEqual([null, 'rest', 'work'].sort());
+    // A leaf may go under any active category that is not yet at the last level.
+    expect(ids(possibleParents(all, 'rest'))).toContain('meetings');
+    expect(ids(possibleParents(all, 'rest'))).not.toContain('standup');
+  });
+
+  it('does not offer archived categories', () => {
+    expect(ids(possibleParents(all, 'rest'))).not.toContain('old');
+  });
+});
+
+describe('subtreeIds', () => {
+  it('collects all levels below', () => {
+    expect([...subtreeIds(all, 'work')].sort()).toEqual(['meetings', 'old', 'standup', 'tasks', 'work']);
   });
 });

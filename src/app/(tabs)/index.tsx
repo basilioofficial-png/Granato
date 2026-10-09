@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { AppState, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { branchColor, categoryPath, childCategories } from '@/domain/categories';
+import { branchColor, categoryPath, childCategories, isActiveCategory } from '@/domain/categories';
 import { entryDuration, getLocalDate, localDayInterval } from '@/domain/time';
 import { buildDayStrip } from '@/domain/timeline';
 import { recentCategoryIds } from '@/domain/tracking';
@@ -52,9 +52,9 @@ export default function TrackerScreen() {
 
   const byId = new Map<string, Category>(categories.map((c) => [c.id, c]));
   const colorOf = (id: string) => branchColor(categories, id) ?? colors.muted;
-  const recentIds = recentCategoryIds(recentEntries, running?.categoryId ?? null, RECENT_TILES).filter(
-    (id) => byId.has(id),
-  );
+  // Archived activities are not offered for new tracking.
+  const activeRecent = recentEntries.filter((e) => isActiveCategory(categories, e.categoryId));
+  const recentIds = recentCategoryIds(activeRecent, running?.categoryId ?? null, RECENT_TILES);
   const roots = childCategories(categories, null);
   const openPicker = () => router.push('/picker');
 

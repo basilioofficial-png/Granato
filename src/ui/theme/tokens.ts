@@ -106,3 +106,17 @@ export const type = StyleSheet.create({
 
 /** Minimum touch target and main button height from the design. */
 export const sizes = { touch: 44, button: 56 } as const;
+
+/** Colors offered for top-level categories: the category palette from the design plus extras. */
+export const CATEGORY_COLORS = [
+  '#B71F2E',
+  '#4361D8',
+  '#E6A23C',
+  '#8C6A52',
+  '#1E8C7A',
+  '#4A3F8C',
+  '#8D8D96',
+  '#D94A57',
+  '#2E9E62',
+  '#4D88FF',
+] as const;

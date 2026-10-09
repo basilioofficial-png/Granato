@@ -80,3 +80,40 @@ export function countCategories(db: SqlDatabase): number {
     db.get<{ n: number }>('SELECT COUNT(*) AS n FROM categories WHERE deleted_at IS NULL')?.n ?? 0
   );
 }
+
+export interface CategoryChanges {
+  readonly name?: string;
+  readonly color?: string;
+  readonly parentId?: string | null;
+  readonly sortOrder?: number;
+  readonly archivedAt?: number | null;
+}
+
+const CHANGE_COLUMNS: Record<keyof CategoryChanges, string> = {
+  name: 'name',
+  color: 'color',
+  parentId: 'parent_id',
+  sortOrder: 'sort_order',
+  archivedAt: 'archived_at',
+};
+
+/** Updates the given fields and marks the row for sync. Returns false if nothing matched. */
+export function updateCategory(
+  db: SqlDatabase,
+  id: string,
+  changes: CategoryChanges,
+  now: number,
+): boolean {
+  const keys = (Object.keys(changes) as (keyof CategoryChanges)[]).filter(
+    (key) => changes[key] !== undefined,
+  );
+  const assignments = keys.map((key) => `${CHANGE_COLUMNS[key]} = ?`);
+  const values = keys.map((key) => changes[key] ?? null);
+  const { changes: updated } = db.run(
+    `UPDATE categories
+     SET ${[...assignments, 'updated_at = ?', "sync_status = 'pending'"].join(', ')}
+     WHERE id = ? AND deleted_at IS NULL`,
+    [...values, now, id],
+  );
+  return updated === 1;
+}

@@ -4,7 +4,12 @@ import type { Category, TimeEntry } from '@/domain/types';
 import { now } from '@/lib/clock';
 import { newId } from '@/lib/id';
 import { startApp } from '@/services/appStartup';
-import { listActiveCategories } from '@/services/categoriesService';
+import {
+  listAllCategories,
+  type CategoryEdit,
+  type CategoryResult,
+  type NewCategory,
+} from '@/services/categoriesService';
 import { resetLocalData } from '@/services/devReset';
 import type { TrackingAction, TrackingError, TrackingResult } from '@/services/trackingService';
 
@@ -42,6 +47,11 @@ interface TrackingState {
   dismissToast(): void;
   /** Development only: erases all local data. */
   resetLocalData(): void;
+  /** Category management; the result carries validation errors for the form. */
+  createCategory(input: NewCategory): CategoryResult;
+  updateCategory(id: string, edit: CategoryEdit): CategoryResult;
+  archiveCategory(id: string): CategoryResult;
+  restoreCategory(id: string): CategoryResult;
 }
 
 function describe(error: unknown): string {
@@ -55,7 +65,7 @@ export const useTrackingStore = create<TrackingState>()((set, get) => {
   function reload(): Pick<TrackingState, 'categories' | 'running' | 'todayEntries' | 'recentEntries'> {
     const { db, tracking } = startApp();
     return {
-      categories: listActiveCategories(db),
+      categories: listAllCategories(db),
       running: tracking.getRunning(),
       todayEntries: tracking.listToday(),
       recentEntries: tracking.listRecent(RECENT_ENTRIES_LIMIT),
@@ -77,6 +87,17 @@ export const useTrackingStore = create<TrackingState>()((set, get) => {
       set({ actionError: null, toast, ...reload() });
     } catch (error) {
       set({ actionError: `Не удалось сохранить: ${describe(error)}` });
+    }
+  }
+
+  function runCategoryAction(action: () => CategoryResult): CategoryResult {
+    try {
+      const result = action();
+      if (result.ok) set(reload());
+      return result;
+    } catch (error) {
+      set({ actionError: `Не удалось сохранить: ${describe(error)}` });
+      return { ok: false, error: 'not_found' };
     }
   }
 
@@ -134,6 +155,22 @@ export const useTrackingStore = create<TrackingState>()((set, get) => {
       } catch (error) {
         set({ actionError: `Не удалось сбросить данные: ${describe(error)}` });
       }
+    },
+
+    createCategory(input) {
+      return runCategoryAction(() => startApp().categories.create(input));
+    },
+
+    updateCategory(id, edit) {
+      return runCategoryAction(() => startApp().categories.update(id, edit));
+    },
+
+    archiveCategory(id) {
+      return runCategoryAction(() => startApp().categories.archive(id));
+    },
+
+    restoreCategory(id) {
+      return runCategoryAction(() => startApp().categories.restore(id));
     },
   };
 });

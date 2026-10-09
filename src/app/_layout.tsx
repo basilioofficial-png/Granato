@@ -25,6 +25,8 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="picker" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="categories" />
+        <Stack.Screen name="category-form" options={{ presentation: 'modal' }} />
       </Stack>
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </>

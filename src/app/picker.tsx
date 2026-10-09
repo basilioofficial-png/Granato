@@ -2,7 +2,13 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { branchColor, categoryPath, childCategories } from '@/domain/categories';
+import {
+  branchColor,
+  canHaveChildren,
+  categoryPath,
+  childCategories,
+  isActiveCategory,
+} from '@/domain/categories';
 import { recentCategoryIds } from '@/domain/tracking';
 import type { Category } from '@/domain/types';
 import { useTrackingStore } from '@/store/trackingStore';
@@ -47,7 +53,7 @@ export default function PickerScreen() {
     });
     if (search && parentId === null) {
       return categories
-        .filter((c) => c.archivedAt === null && c.name.toLowerCase().includes(search))
+        .filter((c) => isActiveCategory(categories, c.id) && c.name.toLowerCase().includes(search))
         .map(toRow);
     }
     return childCategories(categories, parentId).map(toRow);
@@ -55,8 +61,12 @@ export default function PickerScreen() {
 
   const recentIds = [
     ...(running ? [running.categoryId] : []),
-    ...recentCategoryIds(recentEntries, running?.categoryId ?? null, RECENT_CHIPS - (running ? 1 : 0)),
-  ].filter((id) => categories.some((c) => c.id === id));
+    ...recentCategoryIds(
+      recentEntries.filter((e) => isActiveCategory(categories, e.categoryId)),
+      running?.categoryId ?? null,
+      RECENT_CHIPS - (running ? 1 : 0),
+    ),
+  ].filter((id) => id === running?.categoryId || isActiveCategory(categories, id));
 
   function choose(categoryId: string) {
     start(categoryId);
@@ -180,6 +190,26 @@ export default function PickerScreen() {
         data={rows}
         keyExtractor={(row) => row.category.id}
         ListHeaderComponent={header}
+        ListFooterComponent={
+          parent === undefined || canHaveChildren(categories, parent.id) ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                if (parent) {
+                  router.push({ pathname: '/category-form', params: { parentId: parent.id } });
+                } else {
+                  router.back();
+                  router.push('/categories');
+                }
+              }}
+              style={styles.footerLink}>
+              <Icon name="plus" color={colors.accentText} size={18} />
+              <Text style={[styles.footerText, { color: colors.accentText }]}>
+                {parent ? `Добавить активность в «${parent.name}»` : 'Управлять категориями'}
+              </Text>
+            </Pressable>
+          ) : null
+        }
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.list}
         renderItem={({ item }) => {
@@ -285,4 +315,13 @@ const styles = StyleSheet.create({
   badge: { marginLeft: 'auto', height: 24, paddingHorizontal: 10, borderRadius: 12, justifyContent: 'center' },
   badgeText: { fontFamily: fonts.bold, fontSize: 12 },
   pressed: { opacity: 0.6 },
+  footerLink: {
+    marginTop: 8,
+    height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  footerText: { fontFamily: fonts.bold, fontSize: 15 },
 });

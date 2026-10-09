@@ -3,6 +3,7 @@ import type { SqlDatabase } from '@/db/types';
 import { now } from '@/lib/clock';
 import { newId } from '@/lib/id';
 import { deviceTimeZone } from '@/lib/timezone';
+import { createCategoriesService, type CategoriesService } from '@/services/categoriesService';
 import { initializeStorage, type StorageStatus } from '@/services/storage';
 import { createTrackingService, type TrackingService } from '@/services/trackingService';
 
@@ -12,6 +13,7 @@ export interface AppServices {
   readonly db: SqlDatabase;
   readonly status: StorageStatus;
   readonly tracking: TrackingService;
+  readonly categories: CategoriesService;
 }
 
 let started: AppServices | null = null;
@@ -25,6 +27,7 @@ export function startApp(): AppServices {
       db,
       status,
       tracking: createTrackingService({ db, now, newId, timeZone: deviceTimeZone }),
+      categories: createCategoriesService({ db, now, newId }),
     };
   }
   return started;

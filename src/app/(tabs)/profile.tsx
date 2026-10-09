@@ -1,6 +1,8 @@
+import { router } from 'expo-router';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTrackingStore } from '@/store/trackingStore';
+import { Icon } from '@/ui/components/Icon';
 import { PlaceholderScreen } from '@/ui/components/PlaceholderScreen';
 import { fonts, radii, sizes, type } from '@/ui/theme/tokens';
 import { useTheme } from '@/ui/theme/useTheme';
@@ -23,7 +25,23 @@ export default function ProfileScreen() {
   return (
     <PlaceholderScreen
       title="Профиль"
-      note="Управление категориями появится на этапе 6, аккаунт — на этапе 12.">
+      note="Аккаунт и синхронизация появятся на этапе 12.">
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push('/categories')}
+        style={({ pressed }) => [
+          styles.linkRow,
+          { borderColor: colors.border, backgroundColor: colors.surface },
+          pressed && styles.pressed,
+        ]}>
+        <View style={styles.linkText}>
+          <Text style={[type.section, { color: colors.text }]}>Категории</Text>
+          <Text style={[type.bodySmall, { color: colors.text2 }]}>
+            Сферы жизни, активности и их уточнения
+          </Text>
+        </View>
+        <Icon name="right" color={colors.text2} size={22} />
+      </Pressable>
       {__DEV__ ? (
         <View style={[styles.devBox, { borderColor: colors.border, backgroundColor: colors.surface }]}>
           <Text style={[type.section, { color: colors.text }]}>Режим разработки</Text>
@@ -49,6 +67,17 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  linkRow: {
+    marginTop: 24,
+    minHeight: 64,
+    borderWidth: 1,
+    borderRadius: radii.button,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  linkText: { flex: 1 },
   devBox: { marginTop: 32, borderWidth: 1, borderRadius: radii.button, padding: 16 },
   devNote: { marginTop: 4 },
   resetButton: {

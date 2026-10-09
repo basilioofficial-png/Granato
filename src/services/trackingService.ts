@@ -1,4 +1,4 @@
-import { getCategoryById } from '@/db/repositories/categoriesRepo';
+import { listCategories } from '@/db/repositories/categoriesRepo';
 import {
   closeTimeEntry,
   getRunningTimeEntry,
@@ -10,6 +10,7 @@ import {
   softDeleteTimeEntry,
 } from '@/db/repositories/timeEntriesRepo';
 import type { SqlDatabase } from '@/db/types';
+import { isActiveCategory } from '@/domain/categories';
 import { getLocalDate, localDayInterval } from '@/domain/time';
 import { planStart, planStop, type TrackingPlan } from '@/domain/tracking';
 import type { EpochMs, TimeEntry, TimeZoneId } from '@/domain/types';
@@ -99,8 +100,8 @@ export function createTrackingService(deps: TrackingDeps): TrackingService {
 
     start(categoryId) {
       return db.transaction(() => {
-        const category = getCategoryById(db, categoryId);
-        if (!category || category.deletedAt !== null || category.archivedAt !== null) {
+        // Archiving a category hides its whole branch, so ancestors are checked too.
+        if (!isActiveCategory(listCategories(db, { includeArchived: true }), categoryId)) {
           return { ok: false, error: 'unknown_category' } as const;
         }
         // One timestamp for the whole action: the old entry ends exactly when the new one starts.

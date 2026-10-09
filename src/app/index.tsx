@@ -2,8 +2,9 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { getLocalDate, localDayInterval } from '@/domain/time';
 import { APP_NAME, APP_TAGLINE } from '@/lib/appInfo';
+import { startApp } from '@/services/appStartup';
 
-// Temporary on-device check (stage 2): proves that time zone logic works on
+// Temporary on-device checks (stages 2–3): proves that time zone logic works on
 // the phone's JS engine (Hermes), not only in Jest. Replaced in stage 4.
 function timeZoneDiagnostics(): string {
   try {
@@ -18,12 +19,24 @@ function timeZoneDiagnostics(): string {
   }
 }
 
+// Shows that the database opens, migrates and keeps data between launches.
+function storageDiagnostics(): string {
+  try {
+    const { status } = startApp();
+    const firstLaunch = status.seededNow ? ' · первый запуск' : '';
+    return `База: версия схемы ${status.schemaVersion} · категорий: ${status.categoriesCount}${firstLaunch}`;
+  } catch (error) {
+    return `Ошибка базы: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
 export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{APP_NAME}</Text>
       <Text style={styles.tagline}>{APP_TAGLINE}</Text>
       <Text style={styles.diagnostics}>{timeZoneDiagnostics()}</Text>
+      <Text style={styles.diagnosticsLine}>{storageDiagnostics()}</Text>
     </View>
   );
 }
@@ -49,6 +62,12 @@ const styles = StyleSheet.create({
   },
   diagnostics: {
     marginTop: 32,
+    fontSize: 13,
+    color: '#8A7A7D',
+    textAlign: 'center',
+  },
+  diagnosticsLine: {
+    marginTop: 6,
     fontSize: 13,
     color: '#8A7A7D',
     textAlign: 'center',

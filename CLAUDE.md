@@ -50,6 +50,8 @@ npx expo start      # запуск dev-сервера (ручная провер
 
 Перед каждым коммитом с кодом `typecheck`, `lint` и `test` должны проходить.
 
+Тесты базы данных используют встроенный SQLite Node.js (`node:sqlite`), поэтому для `npm test` нужен Node.js 22.13 или новее. Тестовые хелперы базы — в `src/db/testing/`, в код приложения они не импортируются.
+
 ## Архитектурные правила
 
 - Слои: `src/app/` (экраны, Expo Router) → `src/store/` → `src/services/` → `src/domain/`; `src/services/` → `src/db/`.

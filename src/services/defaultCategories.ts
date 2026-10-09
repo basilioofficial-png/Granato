@@ -3,15 +3,15 @@ import { countCategories, insertCategory } from '@/db/repositories/categoriesRep
 import type { SqlDatabase } from '@/db/types';
 import type { EpochMs } from '@/domain/types';
 
-/** Starter set shown on first launch; the user can rename, recolor or archive them. */
+/** Starter set shown on first launch (see docs/design); the user can rename, recolor or archive them. */
 export const DEFAULT_CATEGORIES: readonly { name: string; color: string }[] = [
-  { name: 'Работа', color: '#B3123A' },
-  { name: 'Отдых', color: '#2E9E6B' },
-  { name: 'Сон', color: '#4B5BB5' },
-  { name: 'Еда', color: '#E08A1E' },
-  { name: 'Дорога', color: '#6B7280' },
-  { name: 'Спорт', color: '#0E9BB5' },
-  { name: 'Быт', color: '#9B5DE5' },
+  { name: 'Работа', color: '#B71F2E' },
+  { name: 'Учёба', color: '#4361D8' },
+  { name: 'Отдых', color: '#E6A23C' },
+  { name: 'Быт', color: '#8C6A52' },
+  { name: 'Спорт', color: '#1E8C7A' },
+  { name: 'Сон', color: '#4A3F8C' },
+  { name: 'Дорога', color: '#8D8D96' },
 ];
 
 const SEEDED_FLAG = 'default_categories_seeded';

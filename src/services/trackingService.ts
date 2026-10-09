@@ -2,8 +2,12 @@ import { getCategoryById } from '@/db/repositories/categoriesRepo';
 import {
   closeTimeEntry,
   getRunningTimeEntry,
+  getTimeEntryById,
   insertTimeEntry,
+  listRecentTimeEntries,
   listTimeEntriesOverlapping,
+  reopenTimeEntry,
+  softDeleteTimeEntry,
 } from '@/db/repositories/timeEntriesRepo';
 import type { SqlDatabase } from '@/db/types';
 import { getLocalDate, localDayInterval } from '@/domain/time';
@@ -17,10 +21,23 @@ export interface TrackingDeps {
   readonly timeZone: () => TimeZoneId;
 }
 
-export type TrackingError = 'clock_behind' | 'unknown_category';
+export type TrackingError = 'clock_behind' | 'unknown_category' | 'undo_unavailable';
+
+/** What a start/switch/stop changed — enough to undo it. */
+export interface TrackingAction {
+  readonly at: EpochMs;
+  /** Entry that was running and got closed, as it is after closing. */
+  readonly closed: TimeEntry | null;
+  readonly openedId: string | null;
+}
 
 export type TrackingResult =
-  | { readonly ok: true; readonly running: TimeEntry | null; readonly changed: boolean }
+  | {
+      readonly ok: true;
+      readonly running: TimeEntry | null;
+      /** `null` when nothing changed (e.g. a double tap). */
+      readonly action: TrackingAction | null;
+    }
   | { readonly ok: false; readonly error: TrackingError };
 
 export interface TrackingService {
@@ -29,8 +46,15 @@ export interface TrackingService {
   /** Starts `categoryId`; if something else is running, switches to it. */
   start(categoryId: string): TrackingResult;
   stop(): TrackingResult;
+  /**
+   * Reverts `action` if nothing happened since: the opened entry is removed and the
+   * closed one runs again, as if the tap never happened.
+   */
+  undo(action: TrackingAction): TrackingResult;
   /** Entries overlapping the current local day, oldest first. */
   listToday(): TimeEntry[];
+  /** Latest entries for "recent" lists, newest first. */
+  listRecent(limit: number): TimeEntry[];
 }
 
 export function createTrackingService(deps: TrackingDeps): TrackingService {
@@ -38,12 +62,16 @@ export function createTrackingService(deps: TrackingDeps): TrackingService {
 
   /** Writes a plan atomically: both the close and the open happen, or neither. */
   function apply(plan: TrackingPlan, running: TimeEntry | null, at: EpochMs): TrackingResult {
-    if (plan.kind === 'noop') return { ok: true, running, changed: false };
+    if (plan.kind === 'noop') return { ok: true, running, action: null };
     if (plan.kind === 'error') return { ok: false, error: plan.reason };
 
-    if (plan.close && !closeTimeEntry(db, plan.close.entryId, plan.close.endedAt, at)) {
-      // Throwing rolls back the transaction: never open a new entry over a stale one.
-      throw new Error(`Running entry ${plan.close.entryId} could not be closed`);
+    let closed: TimeEntry | null = null;
+    if (plan.close) {
+      if (!closeTimeEntry(db, plan.close.entryId, plan.close.endedAt, at)) {
+        // Throwing rolls back the transaction: never open a new entry over a stale one.
+        throw new Error(`Running entry ${plan.close.entryId} could not be closed`);
+      }
+      closed = getTimeEntryById(db, plan.close.entryId);
     }
     let opened: TimeEntry | null = null;
     if (plan.open) {
@@ -63,7 +91,7 @@ export function createTrackingService(deps: TrackingDeps): TrackingService {
       };
       insertTimeEntry(db, opened);
     }
-    return { ok: true, running: opened, changed: true };
+    return { ok: true, running: opened, action: { at, closed, openedId: opened?.id ?? null } };
   }
 
   return {
@@ -88,6 +116,32 @@ export function createTrackingService(deps: TrackingDeps): TrackingService {
         const running = getRunningTimeEntry(db);
         return apply(planStop(running, at), running, at);
       });
+    },
+
+    undo(action) {
+      return db.transaction(() => {
+        const running = getRunningTimeEntry(db);
+        // Only undo the very last change: the opened entry must still be the running one.
+        if ((running?.id ?? null) !== action.openedId) {
+          return { ok: false, error: 'undo_unavailable' } as const;
+        }
+        const closed = action.closed ? getTimeEntryById(db, action.closed.id) : null;
+        if (action.closed && (closed?.endedAt !== action.at || closed.deletedAt !== null)) {
+          return { ok: false, error: 'undo_unavailable' } as const;
+        }
+        const at = deps.now();
+        if (action.openedId !== null && !softDeleteTimeEntry(db, action.openedId, at)) {
+          throw new Error(`Entry ${action.openedId} could not be removed`);
+        }
+        if (closed && !reopenTimeEntry(db, closed.id, at)) {
+          throw new Error(`Entry ${closed.id} could not be reopened`);
+        }
+        return { ok: true, running: getRunningTimeEntry(db), action: null };
+      });
+    },
+
+    listRecent(limit) {
+      return listRecentTimeEntries(db, limit);
     },
 
     listToday() {

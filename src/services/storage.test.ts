@@ -25,12 +25,12 @@ describe('initializeStorage', () => {
     const categories = listCategories(db);
     expect(categories.map((c) => c.name)).toEqual([
       'Работа',
+      'Учёба',
       'Отдых',
-      'Сон',
-      'Еда',
-      'Дорога',
-      'Спорт',
       'Быт',
+      'Спорт',
+      'Сон',
+      'Дорога',
     ]);
     expect(categories.every((c) => c.parentId === null && c.favoriteRank !== null)).toBe(true);
   });

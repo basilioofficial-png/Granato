@@ -1,4 +1,4 @@
-import type { EpochMs, TimeZoneId } from '@/domain/types';
+import type { EpochMs, LocalDate, TimeZoneId } from '@/domain/types';
 
 function pad(value: number): string {
   return String(value).padStart(2, '0');
@@ -29,4 +29,52 @@ export function formatClockTime(instant: EpochMs, timeZone: TimeZoneId): string 
     clockFormatters.set(timeZone, formatter);
   }
   return formatter.format(instant);
+}
+
+/** "14 ч 22 мин", "45 мин", "3 ч" — for totals and toasts. */
+export function formatHoursMinutes(ms: number): string {
+  const totalMinutes = Math.floor(Math.max(0, ms) / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes} мин`;
+  return minutes === 0 ? `${hours} ч` : `${hours} ч ${pad(minutes)} мин`;
+}
+
+/** Wall-clock time without seconds: "09:05". */
+export function formatHourMinute(instant: EpochMs, timeZone: TimeZoneId): string {
+  return formatClockTime(instant, timeZone).slice(0, 5);
+}
+
+const WEEKDAYS = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+const MONTHS_GENITIVE = [
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря',
+];
+
+/**
+ * "Пятница, 9 октября". Built by hand instead of Intl with the ru locale:
+ * the result does not depend on locale data available on the device.
+ */
+export function formatDayTitle(date: LocalDate): string {
+  const weekday = WEEKDAYS[new Date(Date.UTC(date.year, date.month - 1, date.day)).getUTCDay()];
+  return `${weekday ?? ''}, ${date.day} ${MONTHS_GENITIVE[date.month - 1] ?? ''}`;
+}
+
+/** Russian plural: pluralRu(3, ['активность', 'активности', 'активностей']) → "активности". */
+export function pluralRu(n: number, forms: readonly [string, string, string]): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return forms[0];
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return forms[1];
+  return forms[2];
 }

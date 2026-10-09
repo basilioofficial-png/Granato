@@ -102,3 +102,38 @@ export function listTimeEntriesOverlapping(db: SqlDatabase, range: Interval): Ti
     )
     .map(toTimeEntry);
 }
+
+/** Most recent non-deleted entries, newest first. */
+export function listRecentTimeEntries(db: SqlDatabase, limit: number): TimeEntry[] {
+  return db
+    .all<TimeEntryRow>(
+      `SELECT * FROM time_entries
+       WHERE deleted_at IS NULL
+       ORDER BY started_at DESC
+       LIMIT ?`,
+      [limit],
+    )
+    .map(toTimeEntry);
+}
+
+/** Soft delete. Returns false if the entry does not exist or is already deleted. */
+export function softDeleteTimeEntry(db: SqlDatabase, entryId: string, now: EpochMs): boolean {
+  const { changes } = db.run(
+    `UPDATE time_entries
+     SET deleted_at = ?, updated_at = ?, sync_status = 'pending'
+     WHERE id = ? AND deleted_at IS NULL`,
+    [now, now, entryId],
+  );
+  return changes === 1;
+}
+
+/** Makes a finished entry running again (used by "undo"). */
+export function reopenTimeEntry(db: SqlDatabase, entryId: string, now: EpochMs): boolean {
+  const { changes } = db.run(
+    `UPDATE time_entries
+     SET ended_at = NULL, updated_at = ?, sync_status = 'pending'
+     WHERE id = ? AND ended_at IS NOT NULL AND deleted_at IS NULL`,
+    [now, entryId],
+  );
+  return changes === 1;
+}

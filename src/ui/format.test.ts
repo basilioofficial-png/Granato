@@ -2,6 +2,7 @@ import {
   formatClockTime,
   formatDayTitle,
   formatDuration,
+  formatHistoryDayLabel,
   formatHourMinute,
   formatHoursMinutes,
   pluralRu,
@@ -72,5 +73,23 @@ describe('pluralRu', () => {
     [22, 'активности'],
   ])('%i → %s', (n, expected) => {
     expect(pluralRu(n, forms)).toBe(expected);
+  });
+});
+
+describe('formatHistoryDayLabel', () => {
+  const today = { year: 2026, month: 10, day: 9 };
+  it('names today and yesterday', () => {
+    expect(formatHistoryDayLabel(today, today)).toBe('Сегодня, пт 9 октября');
+    expect(formatHistoryDayLabel({ year: 2026, month: 10, day: 8 }, today)).toBe('Вчера, чт 8 октября');
+  });
+
+  it('shows other days with a capitalized weekday', () => {
+    expect(formatHistoryDayLabel({ year: 2026, month: 10, day: 7 }, today)).toBe('Ср, 7 октября');
+  });
+
+  it('adds the year for another year, and handles January 1st', () => {
+    expect(formatHistoryDayLabel({ year: 2025, month: 12, day: 31 }, { year: 2026, month: 1, day: 1 })).toBe(
+      'Вчера, ср 31 декабря 2025',
+    );
   });
 });

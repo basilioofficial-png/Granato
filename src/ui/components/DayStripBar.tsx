@@ -13,12 +13,14 @@ interface DayStripBarProps {
   /** Color for each category id (the branch color). */
   readonly colorOf: (categoryId: string) => string;
   readonly height?: number;
+  /** Hour marks 00 · 06 · 12 · 18 · 24 under the bar. */
+  readonly showLabels?: boolean;
 }
 
 const HOUR_LABELS = ['00', '06', '12', '18', '24'];
 
 /** "Seeds of the day": 00–24 bar, tracked time in category colors, unknown time hatched. */
-export function DayStripBar({ strip, day, colorOf, height = 14 }: DayStripBarProps) {
+export function DayStripBar({ strip, day, colorOf, height = 14, showLabels = true }: DayStripBarProps) {
   const { colors } = useTheme();
   const [width, setWidth] = useState(0);
   const dayLength = day.end - day.start;
@@ -69,13 +71,15 @@ export function DayStripBar({ strip, day, colorOf, height = 14 }: DayStripBarPro
           </Svg>
         )}
       </View>
-      <View style={styles.labels}>
-        {HOUR_LABELS.map((label) => (
-          <Text key={label} style={[styles.label, { color: colors.text2 }]}>
-            {label}
-          </Text>
-        ))}
-      </View>
+      {showLabels ? (
+        <View style={styles.labels}>
+          {HOUR_LABELS.map((label) => (
+            <Text key={label} style={[styles.label, { color: colors.text2 }]}>
+              {label}
+            </Text>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }

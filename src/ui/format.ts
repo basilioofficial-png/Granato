@@ -78,3 +78,32 @@ export function pluralRu(n: number, forms: readonly [string, string, string]): s
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return forms[1];
   return forms[2];
 }
+
+const WEEKDAYS_SHORT = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+
+function sameDate(a: LocalDate, b: LocalDate): boolean {
+  return a.year === b.year && a.month === b.month && a.day === b.day;
+}
+
+/**
+ * Day switcher label: "Сегодня, пт 9 октября", "Вчера, чт 8 октября", "Ср, 7 октября",
+ * with the year only when it differs from today's.
+ */
+export function formatHistoryDayLabel(date: LocalDate, today: LocalDate): string {
+  const weekday = WEEKDAYS_SHORT[new Date(Date.UTC(date.year, date.month - 1, date.day)).getUTCDay()] ?? '';
+  const dayMonth = `${date.day} ${MONTHS_GENITIVE[date.month - 1] ?? ''}${
+    date.year !== today.year ? ` ${date.year}` : ''
+  }`;
+  const yesterday = new Date(Date.UTC(today.year, today.month - 1, today.day - 1));
+  if (sameDate(date, today)) return `Сегодня, ${weekday} ${dayMonth}`;
+  if (
+    sameDate(date, {
+      year: yesterday.getUTCFullYear(),
+      month: yesterday.getUTCMonth() + 1,
+      day: yesterday.getUTCDate(),
+    })
+  ) {
+    return `Вчера, ${weekday} ${dayMonth}`;
+  }
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)}, ${dayMonth}`;
+}

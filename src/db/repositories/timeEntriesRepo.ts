@@ -137,3 +137,12 @@ export function reopenTimeEntry(db: SqlDatabase, entryId: string, now: EpochMs):
   );
   return changes === 1;
 }
+
+/** Start of the earliest non-deleted entry: the moment the user began tracking. */
+export function getEarliestStart(db: SqlDatabase): EpochMs | null {
+  return (
+    db.get<{ first: number | null }>(
+      'SELECT MIN(started_at) AS first FROM time_entries WHERE deleted_at IS NULL',
+    )?.first ?? null
+  );
+}

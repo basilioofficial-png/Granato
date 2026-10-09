@@ -1,6 +1,7 @@
 import { listCategories } from '@/db/repositories/categoriesRepo';
 import {
   closeTimeEntry,
+  getEarliestStart,
   getRunningTimeEntry,
   getTimeEntryById,
   insertTimeEntry,
@@ -13,7 +14,7 @@ import type { SqlDatabase } from '@/db/types';
 import { isActiveCategory } from '@/domain/categories';
 import { getLocalDate, localDayInterval } from '@/domain/time';
 import { planStart, planStop, type TrackingPlan } from '@/domain/tracking';
-import type { EpochMs, TimeEntry, TimeZoneId } from '@/domain/types';
+import type { EpochMs, LocalDate, TimeEntry, TimeZoneId } from '@/domain/types';
 
 export interface TrackingDeps {
   readonly db: SqlDatabase;
@@ -54,6 +55,10 @@ export interface TrackingService {
   undo(action: TrackingAction): TrackingResult;
   /** Entries overlapping the current local day, oldest first. */
   listToday(): TimeEntry[];
+  /** Entries overlapping the given local day (device time zone), oldest first. */
+  listDay(date: LocalDate): TimeEntry[];
+  /** First tracked moment ever; unknown time is counted only after it. */
+  trackingSince(): EpochMs | null;
   /** Latest entries for "recent" lists, newest first. */
   listRecent(limit: number): TimeEntry[];
 }
@@ -93,6 +98,10 @@ export function createTrackingService(deps: TrackingDeps): TrackingService {
       insertTimeEntry(db, opened);
     }
     return { ok: true, running: opened, action: { at, closed, openedId: opened?.id ?? null } };
+  }
+
+  function listDay(date: LocalDate): TimeEntry[] {
+    return listTimeEntriesOverlapping(db, localDayInterval(date, deps.timeZone()));
   }
 
   return {
@@ -146,9 +155,13 @@ export function createTrackingService(deps: TrackingDeps): TrackingService {
     },
 
     listToday() {
-      const timeZone = deps.timeZone();
-      const today = localDayInterval(getLocalDate(deps.now(), timeZone), timeZone);
-      return listTimeEntriesOverlapping(db, today);
+      return listDay(getLocalDate(deps.now(), deps.timeZone()));
+    },
+
+    listDay,
+
+    trackingSince() {
+      return getEarliestStart(db);
     },
   };
 }

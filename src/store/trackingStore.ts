@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import type { Category, TimeEntry } from '@/domain/types';
+import type { Category, EpochMs, LocalDate, TimeEntry } from '@/domain/types';
 import { now } from '@/lib/clock';
 import { newId } from '@/lib/id';
 import { startApp } from '@/services/appStartup';
@@ -37,6 +37,11 @@ interface TrackingState {
   readonly todayEntries: readonly TimeEntry[];
   readonly recentEntries: readonly TimeEntry[];
   readonly toast: UndoToast | null;
+  /** First tracked moment ever (see buildDayTimeline). */
+  readonly trackingSince: EpochMs | null;
+  /** Day open in the History tab and its entries; `null` until the tab is opened. */
+  readonly historyDay: LocalDate | null;
+  readonly historyEntries: readonly TimeEntry[];
   /** Opens the database and restores the running entry. Safe to call more than once. */
   init(): void;
   /** Re-reads lists from the database (e.g. when the app returns to the foreground). */
@@ -44,6 +49,7 @@ interface TrackingState {
   start(categoryId: string): void;
   stop(): void;
   undo(): void;
+  showHistoryDay(date: LocalDate): void;
   dismissToast(): void;
   /** Development only: erases all local data. */
   resetLocalData(): void;
@@ -62,13 +68,19 @@ let toastCounter = 0;
 
 // The store mirrors the database: it changes only after a successful write.
 export const useTrackingStore = create<TrackingState>()((set, get) => {
-  function reload(): Pick<TrackingState, 'categories' | 'running' | 'todayEntries' | 'recentEntries'> {
+  function reload(): Pick<
+    TrackingState,
+    'categories' | 'running' | 'todayEntries' | 'recentEntries' | 'trackingSince' | 'historyEntries'
+  > {
     const { db, tracking } = startApp();
+    const historyDay = get().historyDay;
     return {
       categories: listAllCategories(db),
       running: tracking.getRunning(),
       todayEntries: tracking.listToday(),
       recentEntries: tracking.listRecent(RECENT_ENTRIES_LIMIT),
+      trackingSince: tracking.trackingSince(),
+      historyEntries: historyDay ? tracking.listDay(historyDay) : [],
     };
   }
 
@@ -110,6 +122,9 @@ export const useTrackingStore = create<TrackingState>()((set, get) => {
     todayEntries: [],
     recentEntries: [],
     toast: null,
+    trackingSince: null,
+    historyDay: null,
+    historyEntries: [],
 
     init() {
       if (get().status === 'ready') return;
@@ -142,6 +157,14 @@ export const useTrackingStore = create<TrackingState>()((set, get) => {
       if (!toast) return;
       set({ toast: null });
       runAction(() => startApp().tracking.undo(toast.action), false);
+    },
+
+    showHistoryDay(date) {
+      try {
+        set({ historyDay: date, historyEntries: startApp().tracking.listDay(date) });
+      } catch (error) {
+        set({ actionError: `Не удалось загрузить день: ${describe(error)}` });
+      }
     },
 
     dismissToast() {

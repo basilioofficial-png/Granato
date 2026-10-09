@@ -34,6 +34,7 @@ export default function TrackerScreen() {
   const start = useTrackingStore((s) => s.start);
   const stop = useTrackingStore((s) => s.stop);
   const refresh = useTrackingStore((s) => s.refresh);
+  const trackingSince = useTrackingStore((s) => s.trackingSince);
 
   // Day may have changed while the app was in the background.
   useEffect(() => {
@@ -48,7 +49,7 @@ export default function TrackerScreen() {
   const timeZone = deviceTimeZone();
   const today = getLocalDate(now, timeZone);
   const day = localDayInterval(today, timeZone);
-  const strip = buildDayStrip(todayEntries, day, now);
+  const strip = buildDayStrip(todayEntries, day, now, trackingSince);
 
   const byId = new Map<string, Category>(categories.map((c) => [c.id, c]));
   const colorOf = (id: string) => branchColor(categories, id) ?? colors.muted;

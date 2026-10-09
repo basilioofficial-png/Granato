@@ -197,3 +197,20 @@ describe('trackingService.undo', () => {
     expect(tracking.undo(action)).toEqual({ ok: false, error: 'undo_unavailable' });
   });
 });
+
+describe('history queries', () => {
+  it('lists entries of any local day and reports when tracking began', () => {
+    const tracking = service();
+    expect(tracking.trackingSince()).toBeNull();
+    clock = Date.UTC(2026, 9, 7, 9, 0); // Oct 7, 12:00 Moscow
+    tracking.start(work);
+    clock = Date.UTC(2026, 9, 7, 10, 0);
+    tracking.stop();
+    clock = Date.UTC(2026, 9, 9, 9, 0);
+    tracking.start(food);
+
+    expect(tracking.listDay({ year: 2026, month: 10, day: 7 }).map((e) => e.categoryId)).toEqual([work]);
+    expect(tracking.listDay({ year: 2026, month: 10, day: 8 })).toEqual([]);
+    expect(tracking.trackingSince()).toBe(Date.UTC(2026, 9, 7, 9, 0));
+  });
+});
